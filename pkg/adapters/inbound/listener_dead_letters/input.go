@@ -29,7 +29,6 @@ func NewLambdaDlq(serviceName string) inbound.ListenerLambda {
 }
 
 func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
-	logrus.Debugf("Content: %v", event)
 	for _, record := range event.Records {
 		logrus.Debugf("Processing record with MessageID %s", record.MessageId)
 
@@ -42,21 +41,17 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 		payload := discord.Payload{
 			Embeds: []discord.Embed{
 				{
-					Title:       "🚨 Erro de processamento de fila",
-					Description: fmt.Sprintf("Houve um erro ao processar a fila %s", record.EventSourceARN),
+					Title:       fmt.Sprintf("🚨 [%s] Erro de processamento de fila (%s)", a.serviceName, record.Attributes["DeadLetterQueueSourceArn"]),
+					Description: fmt.Sprintf("Houve um erro ao preocessa mensagem %s na fila", record.MessageId),
 					Color:       16711680,
 					Fields: []discord.Field{
-						{Name: "Service", Value: a.serviceName, Inline: false},
-						{Name: "QueueSource", Value: record.Attributes["DeadLetterQueueSourceArn"], Inline: false},
 						{Name: "Publisher", Value: record.Attributes["SenderId"], Inline: false},
-						{Name: "MessageId", Value: record.MessageId, Inline: true},
-						{Name: "AWS Region", Value: record.AWSRegion, Inline: true},
-						{Name: "Recebido em", Value: record.Attributes["ApproximateFirstReceiveTimestamp"], Inline: true},
+						{Name: "Recebido", Value: record.Attributes["ApproximateFirstReceiveTimestamp"], Inline: false},
+						{Name: "Tentativas", Value: record.Attributes["ApproximateReceiveCount"], Inline: false},
 						{Name: "Content", Value: record.Body, Inline: false},
-						{Name: "ApproximateReceiveCount", Value: record.Attributes["ApproximateReceiveCount"], Inline: true},
 					},
 					Footer: discord.Footer{
-						Text: fmt.Sprintf("Notificao enviada pelo service %s • %s", a.serviceName, time.Now().UTC().Format("2006-01-02 15:04 UTC")),
+						Text: fmt.Sprintf("Data do processo • %s", time.Now().UTC().Format("2006-01-02 15:04 UTC")),
 					},
 				},
 			},

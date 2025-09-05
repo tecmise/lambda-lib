@@ -1,5 +1,4 @@
-// main.go
-package main
+package dead_letters
 
 import (
 	"bytes"
@@ -22,7 +21,7 @@ type (
 	}
 )
 
-func NewDlq(serviceName string) inbound.ListenerLambda {
+func NewLambdaDlq(serviceName string) inbound.ListenerLambda {
 	return &dlqLambda{
 		serviceName: serviceName,
 	}

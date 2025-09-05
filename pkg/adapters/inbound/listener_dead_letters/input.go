@@ -73,7 +73,7 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 		}
 		defer resp.Body.Close()
 
-		fmt.Println("Status:", resp.Status)
+		logrus.Debugf("Status:", resp.Status)
 
 		logrus.Debugf("Email sent successfully for MessageID %s", record.MessageId)
 	}

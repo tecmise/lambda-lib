@@ -22,7 +22,6 @@ type listener[T queue.QObject] struct {
 
 func (m listener[T]) Handler(ctx context.Context, event events.SQSEvent) error {
 	if event.Records != nil {
-		logrus.Debugf("Received %d records", len(event.Records))
 		for _, record := range event.Records {
 			logrus.Debugf("Processing record with MessageID %s", record.MessageId)
 			logrus.Debugf("Time: %s", record.Attributes["ApproximateReceiveCount"])

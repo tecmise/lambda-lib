@@ -1,55 +1,79 @@
 package listener_dead_letters
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/aws"
+	"fmt"
 	"github.com/sirupsen/logrus"
-	"github.com/tecmise/lambda-lib/pkg/ports/input"
-	"github.com/tecmise/lambda-lib/pkg/ports/input/queue"
+	"github.com/tecmise/lambda-lib/pkg/adapters/inbound"
+	"github.com/tecmise/lambda-lib/pkg/ports/output/discord"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/aws/aws-lambda-go/events"
 )
 
-func NewListenerLambda[T queue.QObject](conf aws.Config, exec func(context.Context, events.SQSMessage, T) error) input.TecmiseLambda {
-	return &listener[T]{
-		configuration: conf,
-		execution:     exec,
+type (
+	dlqLambda struct {
+		serviceName string
+	}
+)
+
+func NewLambdaDlq(serviceName string) inbound.ListenerLambda {
+	return &dlqLambda{
+		serviceName: serviceName,
 	}
 }
 
-type listener[T queue.QObject] struct {
-	configuration aws.Config
-	execution     func(context.Context, events.SQSMessage, T) error
-}
+func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
+	for _, record := range event.Records {
+		logrus.Debugf("Processing record with MessageID %s", record.MessageId)
 
-func (m listener[T]) Handler(ctx context.Context, event events.SQSEvent) error {
-	if event.Records != nil {
-		logrus.Debugf("Received %d records", len(event.Records))
-		for _, record := range event.Records {
-			logrus.Debugf("Processing record with MessageID %s", record.MessageId)
-			var result T
-			err := json.Unmarshal([]byte(record.Body), &result)
-			if err != nil {
-				logrus.Errorf("Error unmarshalling record with MessageID %s: %v", record.MessageId, err)
-				return err
-			}
-			logrus.Debugf("Record unmarshalled: %+v", result)
-
-			if errValidation := result.Validate(); errValidation != nil {
-				logrus.Errorf("Error validating record with MessageID %s: %v", record.MessageId, errValidation)
-				return err
-			}
-			logrus.Debug("Record validated successfully")
-
-			if m.execution == nil {
-				logrus.Errorf("No execution function defined for record with MessageID %s", record.MessageId)
-				return errors.New("there's no exection function defined")
-			}
-
-			return m.execution(ctx, record, result)
+		webhookURL := os.Getenv("DISCORD_NOTIFIER_URL")
+		if webhookURL == "" {
+			logrus.Errorf("Webhook URL não definida")
+			return errors.New("discord notifier url is null")
 		}
+
+		payload := discord.Payload{
+			Embeds: []discord.Embed{
+				{
+					Title:       "🚨 Erro de processamento de fila",
+					Description: fmt.Sprintf("Houve um erro ao processar a fila %s", record.EventSourceARN),
+					Color:       16711680,
+					Fields: []discord.Field{
+						{Name: "MessageId:", Value: record.MessageId, Inline: true},
+						{Name: "Event Source", Value: record.EventSource, Inline: true},
+						{Name: "AWS Region", Value: record.AWSRegion, Inline: true},
+						{Name: "Body", Value: record.Body, Inline: false},
+						{Name: "ApproximateReceiveCount", Value: record.Attributes["ApproximateReceiveCount"], Inline: true},
+					},
+					Footer: discord.Footer{
+						Text: fmt.Sprintf("Notificao enviada pelo service %s • %s", a.serviceName, time.Now().UTC().Format("2006-01-02 15:04 UTC")),
+					},
+				},
+			},
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			fmt.Println("Erro ao serializar JSON:", err)
+			return err
+		}
+
+		resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			fmt.Println("Erro ao enviar para o Discord:", err)
+			return err
+		}
+		defer resp.Body.Close()
+
+		fmt.Println("Status:", resp.Status)
+
+		logrus.Debugf("Email sent successfully for MessageID %s", record.MessageId)
 	}
-	logrus.Debug("All records processed successfully")
 	return nil
 }

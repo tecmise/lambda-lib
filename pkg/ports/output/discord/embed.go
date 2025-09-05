@@ -1,4 +1,4 @@
-package input
+package discord
 
 type Embed struct {
 	Title       string  `json:"title"`

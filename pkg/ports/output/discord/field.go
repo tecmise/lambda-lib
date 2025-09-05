@@ -1,4 +1,4 @@
-package input
+package discord
 
 type Field struct {
 	Name   string `json:"name"`

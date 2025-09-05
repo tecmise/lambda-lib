@@ -45,10 +45,11 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 					Description: fmt.Sprintf("Houve um erro ao processar a fila %s", record.EventSourceARN),
 					Color:       16711680,
 					Fields: []discord.Field{
+						{Name: "Service:", Value: a.serviceName, Inline: false},
 						{Name: "MessageId:", Value: record.MessageId, Inline: true},
 						{Name: "Event Source", Value: record.EventSource, Inline: true},
 						{Name: "AWS Region", Value: record.AWSRegion, Inline: true},
-						{Name: "Body", Value: record.Body, Inline: false},
+						{Name: "Content", Value: record.Body, Inline: false},
 						{Name: "ApproximateReceiveCount", Value: record.Attributes["ApproximateReceiveCount"], Inline: true},
 					},
 					Footer: discord.Footer{

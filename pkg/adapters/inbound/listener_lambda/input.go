@@ -25,6 +25,7 @@ func (m listener[T]) Handler(ctx context.Context, event events.SQSEvent) error {
 		logrus.Debugf("Received %d records", len(event.Records))
 		for _, record := range event.Records {
 			logrus.Debugf("Processing record with MessageID %s", record.MessageId)
+			logrus.Debugf("Time: %s", record.Attributes["ApproximateReceiveCount"])
 			var result T
 			err := json.Unmarshal([]byte(record.Body), &result)
 			if err != nil {

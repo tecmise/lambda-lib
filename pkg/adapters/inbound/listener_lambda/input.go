@@ -5,22 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/sirupsen/logrus"
 	"github.com/tecmise/lambda-lib/pkg/ports/input"
 	"github.com/tecmise/lambda-lib/pkg/ports/input/queue"
 )
 
-func NewListenerLambda[T queue.QObject](conf aws.Config, exec func(context.Context, events.SQSMessage, T) error) input.TecmiseLambda {
+func NewListenerLambda[T queue.QObject](exec func(context.Context, events.SQSMessage, T) error) input.TecmiseLambda {
 	return &listener[T]{
-		configuration: conf,
-		execution:     exec,
+		execution: exec,
 	}
 }
 
 type listener[T queue.QObject] struct {
-	configuration aws.Config
-	execution     func(context.Context, events.SQSMessage, T) error
+	execution func(context.Context, events.SQSMessage, T) error
 }
 
 func (m listener[T]) Handler(ctx context.Context, event events.SQSEvent) error {

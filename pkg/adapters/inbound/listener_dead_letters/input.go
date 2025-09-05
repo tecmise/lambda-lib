@@ -29,6 +29,7 @@ func NewLambdaDlq(serviceName string) inbound.ListenerLambda {
 }
 
 func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
+	logrus.Debugf("Content: %v", event)
 	for _, record := range event.Records {
 		logrus.Debugf("Processing record with MessageID %s", record.MessageId)
 

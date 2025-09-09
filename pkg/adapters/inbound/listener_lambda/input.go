@@ -7,16 +7,16 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/sirupsen/logrus"
 	"github.com/tecmise/lambda-lib/pkg/ports/input"
-	"github.com/tecmise/lambda-lib/pkg/ports/input/queue"
+	"reflect"
 )
 
-func NewListenerLambda[T queue.QObject](exec func(context.Context, events.SQSMessage, T) error) input.TecmiseLambda {
+func NewListenerLambda[T any](exec func(context.Context, events.SQSMessage, T) error) input.TecmiseLambda {
 	return &listener[T]{
 		execution: exec,
 	}
 }
 
-type listener[T queue.QObject] struct {
+type listener[T any] struct {
 	execution func(context.Context, events.SQSMessage, T) error
 }
 
@@ -33,10 +33,19 @@ func (m listener[T]) Handler(ctx context.Context, event events.SQSEvent) error {
 			}
 			logrus.Debugf("Record unmarshalled: %+v", result)
 
-			if errValidation := result.Validate(); errValidation != nil {
-				logrus.Errorf("Error validating record with MessageID %s: %v", record.MessageId, errValidation)
-				return err
+			method := reflect.ValueOf(result).MethodByName("Validate")
+			if method.IsValid() {
+				out := method.Call(nil)
+				if len(out) == 1 && !out[0].IsNil() {
+					errValidation := out[0].Interface().(error)
+					logrus.Errorf("Error validating record with MessageID %s: %v", record.MessageId, errValidation)
+					return errValidation
+				}
+				logrus.Debug("Record validated successfully")
+			} else {
+				logrus.Warnf("No Validate method found for record with MessageID %s", record.MessageId)
 			}
+
 			logrus.Debug("Record validated successfully")
 
 			if m.execution == nil {

@@ -68,11 +68,12 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 			fmt.Println("Erro ao enviar para o Discord:", err)
 			return err
 		}
+		
 		defer resp.Body.Close()
 
-		logrus.Debugf("Status:", resp.Status)
+		logrus.Debugf("Status: %s", resp.Status)
 
-		logrus.Debugf("Email sent successfully for MessageID %s", record.MessageId)
+		logrus.Debugf("MessageID %s", record.MessageId)
 	}
 	return nil
 }

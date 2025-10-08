@@ -58,6 +58,9 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 		}
 
 		body, err := json.Marshal(payload)
+
+		logrus.WithField("payload", body).Debugf("Payload created!")
+
 		if err != nil {
 			fmt.Println("Erro ao serializar JSON:", err)
 			return err
@@ -68,7 +71,7 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 			fmt.Println("Erro ao enviar para o Discord:", err)
 			return err
 		}
-		
+
 		defer resp.Body.Close()
 
 		logrus.Debugf("Status: %s", resp.Status)

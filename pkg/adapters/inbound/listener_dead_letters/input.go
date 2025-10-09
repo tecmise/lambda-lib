@@ -59,7 +59,7 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 
 		body, err := json.Marshal(payload)
 
-		logrus.WithField("payload", body).Debugf("Payload created!")
+		logrus.WithField("payload", string(body)).WithField("webhook", webhookURL).Debugf("Payload created!")
 
 		if err != nil {
 			fmt.Println("Erro ao serializar JSON:", err)

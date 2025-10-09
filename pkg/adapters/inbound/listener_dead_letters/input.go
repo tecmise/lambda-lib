@@ -3,6 +3,7 @@ package listener_dead_letters
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,12 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 			return errors.New("discord notifier url is null")
 		}
 
+		// Converte o conteúdo para base64
+		contentB64 := base64.StdEncoding.EncodeToString([]byte(record.Body))
+		if len(contentB64) > 700 {
+			contentB64 = "Payload grande de mais para ser anexado nessa mensagem"
+		}
+
 		payload := discord.Payload{
 			Embeds: []discord.Embed{
 				{
@@ -48,7 +55,7 @@ func (a *dlqLambda) Handler(_ context.Context, event events.SQSEvent) error {
 						{Name: "Publisher", Value: record.Attributes["SenderId"], Inline: false},
 						{Name: "Recebido", Value: record.Attributes["ApproximateFirstReceiveTimestamp"], Inline: false},
 						{Name: "Tentativas", Value: record.Attributes["ApproximateReceiveCount"], Inline: false},
-						{Name: "Content", Value: record.Body, Inline: false},
+						{Name: "Content", Value: contentB64, Inline: false},
 					},
 					Footer: discord.Footer{
 						Text: fmt.Sprintf("Data do processo • %s", time.Now().UTC().Format("2006-01-02 15:04 UTC")),
